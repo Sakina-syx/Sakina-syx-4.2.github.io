@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop - lesson 10: finishing up (Enhanced)</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            background: #eee;
+            display: block;
+            margin: 0 auto;
+        }
+
+        button {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #0095DD;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="myCanvas" width="640" height="480"></canvas>
+<button id="restartButton" style="display: none;">重新开始</button>
+
+<script>
+    // 获取canvas元素及其2D绘图上下文
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // 游戏元素相关变量
+    var ballRadius = 10;
+    var x = canvas.width / 2;
+    var y = canvas.height - 30;
+    var dx = 2;
+    var dy = -2;
+    var paddleHeight = 10;
+    var paddleWidth = 75;
+    var paddleX = (canvas.width - paddleWidth) / 2;
+    var rightPressed = false;
+    var leftPressed = false;
+
+    // 砖块相关变量
+    var brickRowCount = 8; // 增加行数
+    var brickColumnCount = 6; // 增加列数
+    var brickWidth = 60;
+    var brickHeight = 20;
+    var brickPadding = 10;
+    var brickOffsetTop = 30;
+    var brickOffsetLeft = 30;
+
+    // 游戏状态相关变量
+    var score = 0;
+    var lives = 3;
+
+    // 存储砖块对象的二维数组
+    var bricks = [];
+    for (var c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
+        for (var r = 0; r < brickRowCount; r++) {
+            // 随机生成砖块颜色，0表示蓝色，1表示红色
+            var brickColor = Math.floor(Math.random() * 2);
+            bricks[c][r] = {
+                x: 0,
+                y: 0,
+                status: 1,
+                color: brickColor === 0? "blue" : "red"
+            };
+        }
+    }
+
+    // 事件监听函数
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+    document.addEventListener("mousemove", mouseMoveHandler, false);
+
+    function keyDownHandler(e) {
+        if (e.code === "ArrowRight") {
+            rightPressed = true;
+        } else if (e.code === 'ArrowLeft') {
+            leftPressed = true;
+        }
+    }
+
+    function keyUpHandler(e) {
+        if (e.code === 'ArrowRight') {
+            rightPressed = false;
+        } else if (e.code === 'ArrowLeft') {
+            leftPressed = false;
+        }
+    }
+
+    function mouseMoveHandler(e) {
+        var relativeX = e.clientX - canvas.offsetLeft;
+        if (relativeX > 0 && relativeX < canvas.width) {
+            paddleX = relativeX - paddleWidth / 2;
+        }
+    }
+
+    // 碰撞检测函数
+    function collisionDetection() {
+        for (var c = 0; c < brickColumnCount; c++) {
+            for (var r = 0; r < brickRowCount; r++) {
+                var b = bricks[c][r];
+                if (b.status === 1) {
+                    if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                        dy = -dy;
+                        b.status = 0;
+                        if (b.color === "red") {
+                            score += 2;
+                        } else {
+                            score += 1;
+                        }
+                        checkWinCondition();
+                    }
+                }
+            }
+        }
+    }
+
+    // 检查游戏胜利条件的函数
+    function checkWinCondition() {
+        var allBricksCleared = true;
+        for (var c = 0; c < brickColumnCount; c++) {
+            for (var r = 0; r < brickRowCount; r++) {
+                if (bricks[c][r].status === 1) {
+                    allBricksCleared = false;
+                    break;
+                }
+            }
+            if (!allBricksCleared) {
+                break;
+            }
+        }
+
+        if (allBricksCleared) {
+            alert("YOU WIN, CONGRATS!");
+            document.location.reload();
+        }
+    }
+
+    // 绘制函数
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#0095DD";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawPaddle() {
+        ctx.beginPath();
+        ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+        ctx.fillStyle = "#0095DD";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBricks() {
+        for (var c = 0; c < brickColumnCount; c++) {
+            for (var r = 0; r < brickRowCount; r++) {
+                if (bricks[c][r].status == 1) {
+                    var brickX = (r * (brickWidth + brickPadding)) + brickOffsetLeft;
+                    var brickY = (c * (brickHeight + brickPadding)) + brickOffsetTop;
+                    bricks[c][r].x = brickX;
+                    bricks[c][r].y = brickY;
+                    ctx.beginPath();
+                    ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                    // 根据砖块颜色设置填充颜色
+                    ctx.fillStyle = bricks[c][r].color === "blue"? "#0000FF" : "#FF0000";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+
+    function drawScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Score: " + score, 8, 20);
+    }
+
+    function drawLives() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Lives: " + lives, canvas.width - 65, 20);
+    }
+
+    // 主绘制函数
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawScore();
+        drawLives();
+        collisionDetection();
+
+        if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+            dx = -dx;
+        }
+        if (y + dy < ballRadius) {
+            dy = -dy;
+        }
+        else if (y + dy > canvas.height - ballRadius) {
+            if (x > paddleX && x < paddleX + paddleWidth) {
+                dy = -dy;
+            }
+            else {
+                lives--;
+                if (!lives) {
+                    showGameOverScreen();
+                }
+                else {
+                    x = canvas.width / 2;
+                    y = canvas.height - 30;
+                    dx = 2;
+                    dy = -2;
+                    paddleX = (canvas.width - paddleWidth) / 2;
+                }
+            }
+        }
+
+        if (rightPressed && paddleX < canvas.width - paddleWidth) {
+            paddleX += 7;
+        }
+        else if (leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+
+        x += dx;
+        y += dy;
+        requestAnimationFrame(draw);
+    }
+
+    // 显示游戏结束屏幕并隐藏游戏界面
+    function showGameOverScreen() {
+        document.getElementById("myCanvas").style.display = "none";
+        document.getElementById("restartButton").style.display = "block";
+    }
+
+    // 重新开始游戏函数
+    function restartGame() {
+        // 重置游戏变量
+        score = 0;
+        lives = 3;
+        x = canvas.width / 2;
+        y = canvas.height - 30;
+        dx = 2;
+        dy = -2;
+        paddleX = (canvas.width - paddleWidth) / 2;
+
+        // 重置砖块状态
+        for (var c = 0; c < brickColumnCount; c++) {
+        for (var r = 0; r < brickRowCount; r++) {
+            bricks[c][r].status = 1;
+        }
+        }
+
+        // 重新显示游戏界面并隐藏重新开始按钮
+        document.getElementById("myCanvas").style.display = "block";
+        document.getElementById("restartButton").style.display = "none";
+
+        draw();
+    }
+
+    // 绑定重新开始按钮的点击事件
+    document.getElementById("restartButton").addEventListener("click", restartGame);
+
+    draw();
+</script>
+
+</body>
+</html>
